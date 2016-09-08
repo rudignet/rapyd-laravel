@@ -49,6 +49,8 @@ abstract class Field extends Widget
     public $model_relations;
     public $insert_value = null;
     public $update_value = null;
+    public $insert_description = null;
+    public $update_description = null;
     public $show_value = null; //default value in visualization
     public $edited = false;
     public $options = array();
@@ -71,6 +73,12 @@ abstract class Field extends Widget
     public $messages = array();
     public $query_scope;
     public $query_scope_params = [];
+    
+    /**
+     * auto apply xss filter or not
+     * @var bool
+     */
+    public $with_xss_filter = true;
 
     // layout
     public $layout = array(
@@ -238,10 +246,10 @@ abstract class Field extends Widget
         return $this;
     }
 
-    public function insertValue($insert_value)
+    public function insertValue($insert_value, $insert_description = null)
     {
         $this->insert_value = $insert_value;
-
+        $this->insert_description = $insert_description;
         return $this;
     }
 
@@ -252,10 +260,10 @@ abstract class Field extends Widget
         return $this;
     }
 
-    public function updateValue($update_value)
+    public function updateValue($update_value, $update_description = null)
     {
         $this->update_value = $update_value;
-
+        $this->update_description = $update_description;
         return $this;
     }
 
@@ -305,14 +313,24 @@ abstract class Field extends Widget
                 }
 
             } else {
-                $this->value = HTML::xssfilter(Input::get($this->name));
+                if($this->with_xss_filter) {
+                    $this->value = HTML::xssfilter(Input::get($this->name));
+                } else {
+                    $this->value = Input::get($this->name);
+                }
             }
             $this->is_refill = true;
 
         } elseif (($this->status == "create") && ($this->insert_value != null)) {
             $this->value = $this->insert_value;
+            if ($this->insert_description != null) {
+                $this->description = $this->insert_description;
+            }
         } elseif (($this->status == "modify") && ($this->update_value != null)) {
             $this->value = $this->update_value;
+            if ($this->update_description != null) {
+                $this->description = $this->update_description;
+            }
         } elseif (($this->status == "show") && ($this->show_value != null)) {
             $this->value = $this->show_value;
         } elseif (isset($this->model) && $this->relation != null) {
@@ -388,8 +406,11 @@ abstract class Field extends Widget
                 }
 
             } else {
-
-                $this->new_value = HTML::xssfilter(Input::get($this->name));
+                if($this->with_xss_filter) {
+                    $this->new_value = HTML::xssfilter(Input::get($this->name));
+                } else {
+                    $this->new_value = Input::get($this->name);
+                }
             }
         } elseif (($this->action == "insert") && ($this->insert_value != null)) {
             $this->edited = true;
@@ -632,7 +653,7 @@ abstract class Field extends Widget
             $this->has_wrapper = false;
         }
         $this->getValue();
-        $this->star = (!($this->status == "show") and $this->required) ? '&nbsp;*' : '';
+//        $this->star = (!($this->status == "show") and $this->required) ? '&nbsp;*' : '';
         $this->req = (!($this->status == "show") and $this->required) ? ' required' : '';
         if (($this->status == "hidden" || $this->visible === false || in_array($this->type, array("hidden", "auto")))) {
             $this->is_hidden = true;
@@ -691,5 +712,17 @@ abstract class Field extends Widget
         }
 
         return $output;
+    }
+    
+    /**
+     * Set auto apply xss filter or not
+     *
+     * @param bool|true $trueOrFalse
+     * @return $this
+     */
+    public function withXssFilter($trueOrFalse = true)
+    {
+        $this->with_xss_filter = (bool) $trueOrFalse;
+        return $this;
     }
 }
